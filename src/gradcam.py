@@ -26,14 +26,18 @@ class GradCAM:
         self.target_layer = target_layer
         self._activations: torch.Tensor | None = None
         self._gradients: torch.Tensor | None = None
+        # Capture the gradient directly on the activation tensor.  This is
+        # more reliable than register_full_backward_hook for residual blocks
+        # (e.g. ResNet layer4), where grad_out can otherwise be None.
         self._fwd_hook = target_layer.register_forward_hook(self._save_activation)
-        self._bwd_hook = target_layer.register_full_backward_hook(self._save_gradient)
 
     def _save_activation(self, _module, _inp, out):
         self._activations = out.detach()
+        if isinstance(out, torch.Tensor) and out.requires_grad:
+            out.register_hook(self._save_gradient_tensor)
 
-    def _save_gradient(self, _module, _grad_in, grad_out):
-        self._gradients = grad_out[0].detach()
+    def _save_gradient_tensor(self, grad):
+        self._gradients = grad.detach()
 
     def __call__(self, x: torch.Tensor, class_idx: int) -> np.ndarray:
         """`x` is a single (1, 3, H, W) tensor on the same device as the model."""
@@ -43,6 +47,8 @@ class GradCAM:
         score.backward(retain_graph=False)
 
         # Global-average-pool the gradients to get one weight per channel.
+        if self._activations is None or self._gradients is None:
+            raise RuntimeError("Grad-CAM could not capture activation gradients")
         weights = self._gradients.mean(dim=(2, 3), keepdim=True)
         cam = (weights * self._activations).sum(dim=1, keepdim=True)
         cam = F.relu(cam)
@@ -55,7 +61,6 @@ class GradCAM:
 
     def close(self):
         self._fwd_hook.remove()
-        self._bwd_hook.remove()
 
 
 def overlay_heatmap(img_rgb_uint8: np.ndarray, cam: np.ndarray, alpha: float = 0.4) -> np.ndarray:
