@@ -215,8 +215,8 @@ def build_balanced_dataset(data_dir, seed=42, train_frac=0.70, val_frac=0.15,
     """Legacy HAM10000 + ISIC builder.
 
     This function is retained only so old experiments remain readable.  It is
-    disabled by default because its historical ISIC branch fabricated one
-    pseudo-lesion per image and appended HAM10000 rows that are already present
+    disabled by default because its historical ISIC branch assigned one
+    synthetic pseudo-lesion ID per image and appended HAM10000 rows that are already present
     in the ISIC 2019 aggregate.  Use ``src.clean_dataset`` and notebook 13 for
     every new experiment.
 
