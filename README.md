@@ -1,192 +1,122 @@
-# Melanoma Detection on HAM10000 — Binary Classification
+# Melanoma Detection under a Leakage-Audited Protocol
 
-Final project for the **Digital Image Processing (COM4504 / BLM4504)**
-course, Ankara University, Faculty of Engineering, Department of
-Computer Engineering, Spring 2025–2026.
+Binary melanoma detection on dermoscopy images. Ten methods, from logistic regression to
+Swin-Tiny and a handcrafted–deep feature-fusion model, are compared on a single ISIC 2019
+benchmark with exact-duplicate removal, lesion-grouped splits and augmentation applied to the
+training split only.
 
-**Authors**
+**Paper:** *Lesion-Grouped and Leakage-Audited Melanoma Detection: Deep Architectures and
+Clinical–Handcrafted–Deep Feature Fusion*, TOK 2026 (27th National Conference on Automatic
+Control), Ankara University.
+**Authors:** Feyza Toktaş, Zeynep Köymen, Adem Efe Devrez, Ezra Bolat — Department of Computer
+Engineering, Ankara University.
 
-- Adem Efe Devrez
-- Zeynep Köymen
-- Ezra Bolat
+## Benchmark
 
-**Instructor:** Asst. Prof. Dr. Feyza Toktaş
+- **Corpus:** ISIC 2019 training set (25,331 images). HAM10000 is used only to audit provenance
+  and overlap; it is not added a second time.
+- **Task:** melanoma vs. all other lesions.
+- **Subset:** all melanoma images plus an equal number of non-melanoma images, with exact
+  duplicates (by image ID and stored-image hash) removed before splitting:
+  **9,028 images (4,514 / 4,514)**. This is a balanced subset of ISIC 2019, not the full corpus.
+- **Split:** stratified and grouped by `lesion_id` (seed 42):
+  **6,366 train / 1,353 validation / 1,309 test** (649 melanoma, 660 non-melanoma).
+  No lesion appears in more than one split, and augmentation touches the training split only.
+- **Preprocessing:** DullRazor hair removal, Otsu lesion crop, 224×224 RGB.
 
----
+## Methods
 
-## 1. What this project does
+1. Logistic regression on raw 64×64 pixels
+2. HOG + HSV colour histogram + GLCM → PCA → RBF-SVM
+3. AlexNet
+4. VGG16-BN
+5. ResNet50
+6. EfficientNet-B3
+7. DenseNet121
+8. Swin-Tiny
+9. Soft-vote ensemble of the six CNNs
+10. Hybrid fusion: handcrafted + ABCD-inspired clinical descriptors + deep features of the six
+    CNNs → PCA → SMOTE-Tomek (training data only) → XGBoost
 
-We benchmark **ten methods** for the binary classification task
-*melanoma vs. all other lesions* under a deliberately strict evaluation
-protocol that is **leak-free, balanced, cross-dataset and
-source-decorrelated**: melanoma and non-melanoma images are drawn from
-**both HAM10000 and ISIC 2019** with the same per-class source mixture (so
-the dataset source is statistically independent of the label), lesions are
-split 70/15/15 by `lesion_id`, and the validation/test partitions are
-exactly balanced (test set: **1,698 images, 849/849**). The benchmark
-covers:
+Methods 3–8 are fully fine-tuned and share one recipe: focal loss with class-balanced weights,
+weighted sampling, training-only augmentation, AdamW with warm-up and cosine decay, weight EMA,
+8-way test-time augmentation and a decision threshold tuned on the validation set.
 
-1. Logistic regression on raw 64×64 pixels (simple baseline).
-2. Classical machine learning — HOG + HSV colour histogram + GLCM
-   features → PCA → RBF-SVM.
-3. AlexNet (2012, fully fine-tuned).
-4. VGG16-BN (2014, fully fine-tuned).
-5. ResNet50 (2015, fully fine-tuned).
-6. EfficientNet-B3 (2019, fully fine-tuned).
-7. DenseNet121 (2017, fully fine-tuned).
-8. Swin-Tiny (2021, fully fine-tuned).
-9. Soft-vote ensemble of methods 3–8.
-10. Hybrid handcrafted–deep feature fusion (HOG + colour + GLCM + ABCD
-    clinical descriptors + the penultimate-layer features of all six
-    CNNs, balanced with SMOTE-Tomek, classified by XGBoost / MLP).
+## Results
 
-All deep models share the same training recipe: focal loss with
-class-balanced α, weighted random sampling, conservative medical-grade
-augmentation, AdamW with linear warm-up and cosine annealing,
-exponential moving average of weights, eight-way test-time augmentation,
-and validation-tuned decision thresholds. The split is computed once and
-augmentation is applied to the training partition only, *after* the split,
-so no lesion — and no augmented copy of a test image — leaks into training.
-
-## 2. Headline results (balanced HAM10000 + ISIC 2019 test set, 1,698 images, 849/849)
-
-All ten methods are trained and evaluated on the identical balanced split.
+Test set: 1,309 images (649 melanoma / 660 non-melanoma). Best value per column in bold.
 
 | Method | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|
-| Logistic regression (raw 64×64) | 0.6084 | 0.6274 | 0.5336 | 0.5767 | 0.6550 |
-| Classical ML (HOG + Color + GLCM + PCA + SVM) | 0.6938 | 0.6915 | 0.6996 | 0.6956 | 0.7792 |
-| AlexNet | 0.7538 | 0.7149 | 0.8445 | 0.7743 | 0.8544 |
-| VGG16-BN | 0.7850 | 0.7415 | 0.8751 | 0.8028 | 0.8867 |
-| ResNet50 | 0.7803 | 0.7200 | **0.9176** | 0.8068 | 0.8915 |
-| EfficientNet-B3 | 0.7574 | 0.7010 | 0.8975 | 0.7872 | 0.8720 |
-| DenseNet121 | 0.8009 | 0.7589 | 0.8822 | 0.8159 | 0.9037 |
-| Swin-Tiny (best single CNN) | 0.8351 | 0.8244 | 0.8516 | 0.8378 | **0.9198** |
-| Soft-vote ensemble (6 CNNs) | 0.8074 | 0.7589 | 0.9011 | 0.8239 | 0.9160 |
-| **Hybrid fusion (Method 10)** | 0.8404 | 0.8262 | 0.8622 | **0.8438** | 0.9172 |
+| 1. Logistic regression | 0.5852 | 0.5960 | 0.5069 | 0.5479 | 0.6245 |
+| 2. HOG + colour + GLCM, PCA, SVM | 0.6516 | 0.6606 | 0.6117 | 0.6352 | 0.7181 |
+| 3. AlexNet | 0.7410 | 0.6914 | 0.8629 | 0.7676 | 0.8192 |
+| 4. VGG16-BN | 0.7456 | 0.7158 | 0.8074 | 0.7589 | 0.8341 |
+| 5. ResNet50 | 0.7349 | 0.7240 | 0.7519 | 0.7377 | 0.8253 |
+| 6. EfficientNet-B3 | 0.7357 | 0.7067 | 0.7982 | 0.7496 | 0.8238 |
+| 7. DenseNet121 | 0.7487 | 0.6946 | **0.8798** | **0.7763** | 0.8462 |
+| 8. Swin-Tiny | **0.7754** | **0.7685** | 0.7827 | 0.7756 | **0.8652** |
+| 9. Soft-vote ensemble | 0.7555 | 0.7301 | 0.8043 | 0.7654 | 0.8569 |
+| 10. Hybrid fusion | 0.7540 | 0.7535 | 0.7488 | 0.7512 | 0.8451 |
 
-The **hybrid fusion** classifier attains the best F1 (0.8438), **Swin-Tiny**
-is the strongest single architecture (F1 0.8378, AUC 0.9198), and the
-**soft-vote ensemble** is tuned to a high-recall operating point (0.9011) with
-better precision than the highest-recall single CNN (ResNet50, recall 0.9176) —
-the trade-off preferred for clinical screening. These honest mid-0.80 F1
-values are measured on a leak-free, balanced, source-decorrelated test; they
-are a deliberately more conservative estimate than the 0.95–0.99 figures
-common on HAM10000, which are largely inflated by image-level splits and
-augment-before-split leakage.
+- DenseNet121 has the best F1 and recall; Swin-Tiny has the best accuracy, precision and ROC-AUC.
+- The soft-vote ensemble and the hybrid fusion model do not beat the best single architectures
+  under this protocol.
+- The scores are not comparable with figures reported under image-level splits or without
+  de-duplication; this protocol removes those sources of inflation. All numbers come from a
+  single split (seed 42).
 
-## 3. Repository structure
+[`results/`](results/) holds the per-method metrics (`*_metrics.json`), the test-set predictions
+(`*_predictions.csv`), `comparison_table.csv` and `ablation_table.csv`. In
+`comparison_table.csv`, `train_time_sec` is empty for the CNN runs that were restored from a saved
+checkpoint, and the hybrid model's inference time covers the fusion classifier only (deep
+features are cached).
+
+![ResNet50 Grad-CAM on test images (top row: melanoma, bottom row: non-melanoma)](results/resnet50_gradcam_grid.png)
+
+## Reproducing the results
+
+The notebooks target Google Colab with a GPU runtime (an A100 was used for the CNNs). Each one
+clones this repository, mounts Google Drive and keeps its artifacts under `MyDrive/melanoma/`
+(separate `*_clean_v2` folders for data, checkpoints and results). A Kaggle API token
+(`kaggle.json`) is needed for the dataset downloads.
+
+Run the notebooks in this order: **00 → 12 → 13 → 01–09 → 11 → 10**
+
+| Notebook | Purpose |
+|---|---|
+| `00_data_setup` | HAM10000 arrays, used only for the provenance audit |
+| `12_isic2019_prep` | ISIC 2019 download and preprocessing |
+| `13_clean_dataset_v2` | HAM10000/ISIC overlap audit and the balanced, lesion-grouped dataset; inspect the audit before training |
+| `01`, `02` | Methods 1–2 |
+| `03_deep_learning_effnet` | EfficientNet-B0 baseline, used only in one ablation row |
+| `04`–`09` | Methods 3–8 (one notebook per CNN) |
+| `11_hybrid_fusion` | Method 10 (needs the CNN checkpoints) |
+| `10_aggregation` | Method 9 (ensemble), comparison and ablation tables |
+
+Without a GPU you can still run the unit tests of the dataset builder:
+`pip install -r requirements.txt` and `python -m pytest tests`.
+
+## Repository layout
 
 ```
-.
-├── README.md                          (this file)
-├── requirements.txt                   pip dependencies
-├── config.py                          all paths and hyperparameters
-├── experiments_log.md                 hardware, seed, hyperparameter list
-├── notebooks/                         the twelve Jupyter notebooks
-│   ├── 00_data_setup.ipynb
-│   ├── 01_baseline_logistic.ipynb
-│   ├── 02_classical_ml_svm.ipynb
-│   ├── 03_deep_learning_effnet.ipynb  EfficientNet-B0 transfer learning
-│   ├── 04_alexnet.ipynb
-│   ├── 05_vgg16_bn.ipynb
-│   ├── 06_resnet50.ipynb
-│   ├── 07_efficientnet_b3.ipynb
-│   ├── 08_densenet121.ipynb
-│   ├── 09_swin_tiny.ipynb
-│   ├── 10_aggregation.ipynb           ensemble + headline table + ablations
-│   └── 11_hybrid_fusion.ipynb         Method 10
-├── src/                               reusable Python modules
-│   ├── data.py
-│   ├── preprocessing.py
-│   ├── segmentation.py
-│   ├── abcd.py
-│   ├── features.py
-│   ├── models.py
-│   ├── training.py
-│   ├── evaluation.py
-│   └── gradcam.py
-├── scripts/
-│   └── build_notebooks.py             rebuilds every .ipynb from one source
-└── results_csv/                       per-method metrics JSON + comparison tables
+notebooks/   00–13, one per step
+src/         data loading, preprocessing, segmentation, ABCD and handcrafted features, models,
+             training, evaluation, Grad-CAM, and the audited dataset builder (clean_dataset.py)
+tests/       unit tests for the dataset builder
+results/     metrics, test-set predictions and tables of the reported run
+config.py    paths and hyperparameters
 ```
 
-The raw HAM10000 images, intermediate `.npy` arrays and trained model
-checkpoints are not committed (they are too large for the zip) and live
-on Google Drive under `MyDrive/melanoma/`. The notebooks fetch them
-from there automatically when run on Colab.
+## Data and references
 
-## 4. How to reproduce on Google Colab
+Images are not redistributed. The notebooks download ISIC 2019 (Kaggle `andrewmvd/isic-2019` and
+the official ISIC 2019 metadata) and HAM10000 (Kaggle `kmader/skin-cancer-mnist-ham10000`); check
+each dataset's terms of use before reuse.
 
-Training the six CNNs requires a GPU. We used Google Colab with an
-NVIDIA A100 40 GB. A T4 also works but is roughly three times slower
-and may require the batch sizes in `config.py` to be halved.
-
-1. **One-time setup.** Create a Drive folder `MyDrive/melanoma/` and
-   place a `kaggle.json` Kaggle API token in it.
-2. **Notebook 00 (`00_data_setup.ipynb`).** Open in Colab on a standard
-   CPU runtime. The first cell mounts Drive and prepares the project.
-   The notebook downloads HAM10000 from Kaggle, runs DullRazor hair
-   removal, Otsu lesion segmentation in the LAB colour space, a 15 %
-   margin bounding-box crop, and resizes everything to 448 × 448. It
-   then computes a stratified lesion-grouped 70 / 15 / 15 split and
-   saves the indices to `MyDrive/melanoma/data/`.
-3. **Notebooks 01 → 11.** Run in order. Notebooks 01, 02, 10 and 11 are
-   CPU-only; notebooks 04 to 09 need a GPU. The aggregation notebook
-   (`10_aggregation.ipynb`) regenerates the headline table, ablation
-   table, ROC overlay, error analysis grid and per-method curves.
-
-All outputs land in `MyDrive/melanoma/results/`. Every CNN notebook is
-disconnect-proof: the best validation-F1 checkpoint is saved to Drive
-every time it improves, and a recovery cell at the bottom of each
-notebook reloads the checkpoint and reruns threshold tuning and TTA
-evaluation without retraining.
-
-## 5. Reproducibility
-
-- Global random seed `42` for `numpy`, `torch`, `random` and
-  `torch.cuda`.
-- The lesion-grouped split is computed once and persisted as integer
-  index arrays, so every method evaluates on the same test set.
-- All hyperparameters live in `config.py`. Hardware, software
-  versions and per-architecture training times are listed in
-  `experiments_log.md`.
-- Per-method outputs (metrics JSON, predictions CSV, comparison tables)
-  are committed under `results_csv/` so the headline numbers can be
-  inspected without re-running anything.
-
-## 6. Local smoke test (no GPU required)
-
-To verify that the Python modules import cleanly outside Colab:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python -c "from src import data, preprocessing, segmentation, abcd, features, models, training, evaluation, gradcam; print('ok')"
-```
-
-Local CPU runs are too slow for real training; use Colab for that.
-
-## 7. Configuration
-
-`config.py` is the single source of truth for paths and hyperparameters.
-The two path constants can be overridden by environment variables when
-running outside Colab:
-
-```powershell
-$env:MELANOMA_DRIVE_ROOT = "D:\melanoma"
-$env:MELANOMA_LOCAL_SCRATCH = "D:\melanoma\scratch"
-```
-
-Inside Colab the defaults (`/content/drive/MyDrive/melanoma`,
-`/content/ham10000`) work as-is.
-
-## 8. Dataset citation
-
-> P. Tschandl, C. Rosendahl and H. Kittler,
-> *The HAM10000 dataset, a large collection of multi-source dermatoscopic
-> images of common pigmented skin lesions*,
-> Scientific Data, vol. 5, Art. no. 180161, 2018.
-
-Kaggle slug: `kmader/skin-cancer-mnist-ham10000`.
+- ISIC 2019 Challenge, training data: <https://challenge.isic-archive.com/data/>
+- P. Tschandl, C. Rosendahl, H. Kittler, "The HAM10000 dataset, a large collection of multi-source
+  dermatoscopic images of common pigmented skin lesions," *Scientific Data* 5, 180161, 2018.
+- M. Combalia et al., "BCN20000: Dermoscopic lesions in the wild," arXiv:1908.02288, 2019.
+- B. Cassidy et al., "Analysis of the ISIC image datasets: usage, benchmarks and
+  recommendations," *Medical Image Analysis* 75, 102305, 2022.

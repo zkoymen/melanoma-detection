@@ -1,0 +1,26 @@
+{
+  "accuracy": 0.7005347593582888,
+  "precision": 0.7096247960848288,
+  "recall": 0.6702619414483821,
+  "f1": 0.6893819334389857,
+  "roc_auc": 0.7774898445160386,
+  "train_time_sec": 595.9188132286072,
+  "inference_time_per_image_ms": 0.9796253317999785,
+  "dataset_version": "clean_v2_isic2019_balanced_subset",
+  "hyperparameters": {
+    "arch": "efficientnet_b0_timm",
+    "input_size": 448,
+    "batch_size": 32,
+    "head_lr": 0.001,
+    "head_epochs": 5,
+    "ft_lr": 0.0001,
+    "ft_epochs": 15,
+    "early_stop_patience": 5,
+    "unfreeze_last_n_blocks": 2,
+    "class_weight": "softened (power=0.5)",
+    "augmentation": "hflip+vflip+rot30+colorjitter+resizedcrop",
+    "hair_removal": true,
+    "decision_threshold": 0.5449999999999999,
+    "threshold_selection": "argmax F1 on validation set"
+  }
+}

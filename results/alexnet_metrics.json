@@ -1,0 +1,15 @@
+{
+  "accuracy": 0.7410236822001528,
+  "precision": 0.691358024691358,
+  "recall": 0.8628659476117103,
+  "f1": 0.7676490747087046,
+  "roc_auc": 0.819195031983938,
+  "train_time_sec": 0.0,
+  "inference_time_per_image_ms": 2.5897973179361853,
+  "dataset_version": "clean_v2_isic2019_balanced_subset",
+  "hyperparameters": {
+    "recovered_from_checkpoint": true,
+    "decision_threshold_tta": 0.4799999999999999,
+    "decision_threshold_single": 0.48999999999999994
+  }
+}

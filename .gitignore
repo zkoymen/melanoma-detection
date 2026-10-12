@@ -7,6 +7,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+.pytest_cache/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -21,22 +22,10 @@ env/
 .DS_Store
 Thumbs.db
 
-# Paper folder + submission package (excluded from the public repo)
+# Tables written by the aggregation notebook
 paper/
-paper_v2/
 
-# Private / internal — NOT for the public repo
-# (AI working notes, memory, fix plans, conference & profile info,
-#  and internal methodology-strategy docs)
-ai/
-docs/
-
-# Scratch / generated helper files
-.gen_*.py
-.paper_extract.txt
-.tmp_*
-
-# Data / large artifacts (kept out of git)
+# Data and large artifacts (kept out of git)
 *.npy
 *.h5
 *.pth

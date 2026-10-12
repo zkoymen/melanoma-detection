@@ -1,8 +1,0 @@
-ablation,accuracy,precision,recall,f1,roc_auc
-Loss + sampling: Focal + WeightedRandomSampler (B3),0.7574,0.701,0.8975,0.7872,0.872
-TTA OFF (mean across 6 CNNs),,,,0.8024,
-TTA ON  (mean across 6 CNNs),,,,0.8041,
-Threshold = 0.5 (mean across 6 CNNs),,,,0.8025,
-Threshold tuned on val (mean across 6 CNNs),,,,0.8041,
-Best single CNN (test F1),,,,0.8378,
-"Ensemble (soft-vote, 6 CNNs)",,,,0.8239,
